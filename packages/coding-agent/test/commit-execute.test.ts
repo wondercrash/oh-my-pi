@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vcs from "@oh-my-pi/pi-natives/vcs";
 import { removeWithRetries } from "@oh-my-pi/pi-utils";
-import { abortOnGitFailure, CommitAbortedError, pushOrAbort } from "../src/commit/execute";
+import { abortOnGitFailure, CommitAbortedError, createSignedCommit, pushOrAbort } from "../src/commit/execute";
 
 const tempDirs: string[] = [];
 
@@ -117,5 +117,16 @@ describe("pushOrAbort (issue #7834)", () => {
 
 		vi.spyOn(process.stderr, "write").mockReturnValue(true);
 		await expect(pushOrAbort(dir)).rejects.toBeInstanceOf(CommitAbortedError);
+	});
+});
+describe("createSignedCommit", () => {
+	it("requests a signed native commit", async () => {
+		const commitCreate = vi.fn(async (_message: string, options: { sign?: boolean }) => {
+			if (!options.sign) throw new Error("unsigned commit");
+			return "signed-sha";
+		});
+
+		await expect(createSignedCommit({ commitCreate }, "test: signed")).resolves.toBe("signed-sha");
+		expect(commitCreate).toHaveBeenCalledWith("test: signed", { sign: true });
 	});
 });

@@ -149,8 +149,44 @@ impl GitRepo {
 			.map_err(|err| Error::backend("git reset", err))
 	}
 
+	fn commit_create_signed(&self, message: &str, options: &CommitOptions) -> Result<String> {
+		let mut args = vec![
+			"commit".to_owned(),
+			"--gpg-sign".to_owned(),
+			"--cleanup=verbatim".to_owned(),
+			"--allow-empty-message".to_owned(),
+			"--message".to_owned(),
+			message.to_owned(),
+		];
+		if options.allow_empty {
+			args.push("--allow-empty".to_owned());
+		}
+		if options.amend {
+			args.push("--amend".to_owned());
+		}
+		if let Some(author) = &options.author {
+			args.push(format!("--author={} <{}>", author.name, author.email));
+			if let Some(date) = &author.date {
+				args.push(format!("--date={date}"));
+			}
+		}
+		if !options.files.is_empty() {
+			args.push("--".to_owned());
+			args.extend(options.files.iter().cloned());
+		}
+		super::cli::run_sync_mutating(self.root(), &args, super::cli::COMMAND_TIMEOUT)?
+			.into_checked(&args)?;
+
+		self
+			.head_sha()?
+			.ok_or_else(|| Error::backend("git commit", "commit did not create HEAD"))
+	}
+
 	/// Create a commit and return its object id.
 	pub fn commit_create(&self, message: &str, options: &CommitOptions) -> Result<String> {
+		if options.sign {
+			return self.commit_create_signed(message, options);
+		}
 		let repo = self.gix()?;
 		run_commit_hook(self, &repo, "pre-commit", &[])?;
 		let mut head = repo
@@ -1832,6 +1868,31 @@ mod tests {
 		assert_eq!(git(temp.path(), &["status", "--porcelain"]), "A  new");
 		repo.unstage(&[]).unwrap();
 		assert_eq!(git(temp.path(), &["status", "--porcelain"]), "?? new");
+	}
+
+	#[test]
+	fn commit_create_signs_with_configured_ssh_key() {
+		let (temp, repo) = fixture();
+		let key = temp.path().join("signing-key");
+		let keygen = Command::new("ssh-keygen")
+			.args(["-q", "-t", "ed25519", "-N", "", "-f"])
+			.arg(&key)
+			.output()
+			.unwrap();
+		assert!(keygen.status.success(), "ssh-keygen: {}", String::from_utf8_lossy(&keygen.stderr));
+		git(temp.path(), &["config", "gpg.format", "ssh"]);
+		git(temp.path(), &["config", "user.signingkey", key.to_str().unwrap()]);
+		fs::write(temp.path().join("a"), "signed\n").unwrap();
+		repo.stage_files(&["a".into()]).unwrap();
+
+		repo
+			.commit_create("signed", &CommitOptions { sign: true, ..Default::default() })
+			.unwrap();
+
+		assert!(
+			git(temp.path(), &["cat-file", "-p", "HEAD"])
+				.contains("gpgsig -----BEGIN SSH SIGNATURE-----")
+		);
 	}
 
 	#[test]

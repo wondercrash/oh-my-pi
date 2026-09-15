@@ -7,7 +7,7 @@ import { runAgenticCommit } from "./agentic";
 import { runChangelogFlow } from "./changelog";
 import { formatConventionalCommit } from "./conventional/normalization";
 import { type GeneratedGitCommit, generateGitCommit } from "./conventional/service";
-import { abortOnGitFailure, pushOrAbort } from "./execute";
+import { abortOnGitFailure, createSignedCommit, pushOrAbort } from "./execute";
 import { resolvePrimaryModel } from "./model-selection";
 import type { CommitCommandArgs } from "./types";
 
@@ -57,7 +57,7 @@ async function runLegacyCommitCommand(args: CommitCommandArgs): Promise<void> {
 
 	if (!args.noChangelog) await updateChangelog(cwd, args);
 	try {
-		await vcs.requireGit(cwd).commitCreate(commitMessage, {});
+		await createSignedCommit(vcs.requireGit(cwd), commitMessage);
 	} catch (error) {
 		if (vcs.isVcsError(error)) abortOnGitFailure("Commit failed", error);
 		throw error;

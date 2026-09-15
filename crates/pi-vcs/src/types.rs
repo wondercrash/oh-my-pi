@@ -222,6 +222,8 @@ pub struct StatusOptions {
 pub struct CommitOptions {
 	/// Author override; committer stays the repo identity.
 	pub author:      Option<CommitAuthor>,
+	/// Sign through the user's configured Git signing backend.
+	pub sign:        bool,
 	/// Permit an empty commit.
 	pub allow_empty: bool,
 	/// Amend HEAD instead of appending.

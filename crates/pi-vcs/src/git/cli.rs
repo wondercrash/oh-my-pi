@@ -211,12 +211,27 @@ pub(crate) fn is_spawn_failure(err: &Error) -> bool {
 	matches!(err, Error::Backend { context: "git spawn", .. })
 }
 
-/// Synchronous bounded runner with a caller-chosen deadline; render paths pass
-/// [`SYNC_TIMEOUT`] so a stalled git cannot freeze the UI. Stdout/stderr are
-/// drained concurrently with capped retention, so output larger than the OS
-/// pipe buffer can never stall the child into a spurious timeout.
+/// Synchronous bounded runner for read-only Git plumbing.
 pub(crate) fn run_sync(cwd: &Path, args: &[String], timeout: Duration) -> Result<CliOutput> {
-	let argv = hardened_args(args, true);
+	run_sync_with_mode(cwd, args, timeout, true)
+}
+
+/// Synchronous bounded runner for mutating Git operations.
+pub(crate) fn run_sync_mutating(
+	cwd: &Path,
+	args: &[String],
+	timeout: Duration,
+) -> Result<CliOutput> {
+	run_sync_with_mode(cwd, args, timeout, false)
+}
+
+fn run_sync_with_mode(
+	cwd: &Path,
+	args: &[String],
+	timeout: Duration,
+	read_only: bool,
+) -> Result<CliOutput> {
+	let argv = hardened_args(args, read_only);
 	let mut cmd = std::process::Command::new("git");
 	cmd.args(&argv)
 		.current_dir(cwd)

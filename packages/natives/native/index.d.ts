@@ -2757,6 +2757,7 @@ export interface VcsCommitDetails {
 /** Commit creation options. */
 export interface VcsCommitOptions {
   author?: VcsCommitAuthor
+  sign?: boolean
   allowEmpty?: boolean
   amend?: boolean
   files?: Array<string>

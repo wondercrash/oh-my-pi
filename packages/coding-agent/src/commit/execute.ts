@@ -4,8 +4,8 @@
  * wrapper that keeps a requested `--push` honest.
  */
 
+import type { VcsGitRepo } from "@oh-my-pi/pi-natives";
 import * as vcs from "@oh-my-pi/pi-natives/vcs";
-
 /**
  * A commit or push failure that has already been reported to the user with a
  * readable message. It is thrown so the CLI exits non-zero without the runtime
@@ -38,6 +38,10 @@ export function abortOnGitFailure(context: string, error: vcs.VcsError, note?: s
 	process.stderr.write(`✗ ${context}:\n${body}\n`);
 	if (note) process.stderr.write(`  ${note}\n`);
 	throw new CommitAbortedError();
+}
+/** Create an `omp commit` commit through the configured Git signing backend. */
+export function createSignedCommit(repo: Pick<VcsGitRepo, "commitCreate">, message: string): Promise<string> {
+	return repo.commitCreate(message, { sign: true });
 }
 
 /**

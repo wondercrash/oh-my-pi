@@ -190,6 +190,7 @@ pub struct VcsStatusOptions {
 #[derive(Default)]
 pub struct VcsCommitOptions {
 	pub author:      Option<VcsCommitAuthor>,
+	pub sign:        Option<bool>,
 	pub allow_empty: Option<bool>,
 	pub amend:       Option<bool>,
 	pub files:       Option<Vec<String>>,
@@ -354,6 +355,7 @@ impl From<VcsCommitOptions> for core::CommitOptions {
 	fn from(v: VcsCommitOptions) -> Self {
 		Self {
 			author:      v.author.map(Into::into),
+			sign:        v.sign.unwrap_or(false),
 			allow_empty: v.allow_empty.unwrap_or(false),
 			amend:       v.amend.unwrap_or(false),
 			files:       v.files.unwrap_or_default(),

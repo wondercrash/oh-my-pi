@@ -11,7 +11,7 @@ import type { CommitCommandArgs, ConventionalAnalysis, NumstatEntry } from "../.
 import { ModelRegistry } from "../../config/model-registry";
 import { Settings } from "../../config/settings";
 import { discoverAuthStorage, discoverContextFiles, loadCliExtensionProviders } from "../../sdk";
-import { abortOnGitFailure, pushOrAbort } from "../execute";
+import { abortOnGitFailure, createSignedCommit, pushOrAbort } from "../execute";
 import { type ExistingChangelogEntries, runCommitAgentSession } from "./agent";
 import { generateFallbackProposal } from "./fallback";
 import { assignLockFilesToPlan } from "./lock-files";
@@ -248,7 +248,7 @@ async function runSingleCommit(proposal: CommitProposal, ctx: CommitExecutionCon
 	}
 	process.stdout.write("● Creating commit...\n");
 	try {
-		await repo.commitCreate(commitMessage, {});
+		await createSignedCommit(repo, commitMessage);
 	} catch (error) {
 		if (vcs.isVcsError(error)) abortOnGitFailure("Commit failed", error);
 		throw error;
@@ -317,7 +317,7 @@ async function runSplitCommit(
 		};
 		const message = formatCommitMessage(analysis, commit.summary);
 		try {
-			await repo.commitCreate(message, {});
+			await createSignedCommit(repo, message);
 		} catch (error) {
 			if (vcs.isVcsError(error)) {
 				const stagedNow = await repo.changedFiles({ cached: true });
